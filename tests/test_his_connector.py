@@ -2,6 +2,7 @@ import pytest
 from abc import ABC
 from unittest.mock import MagicMock
 from modules.his_connector.base import BaseHISConnector
+from modules.his_connector.registry import ConnectorRegistry
 from core.models import ClaimInput, Fund
 
 
@@ -27,3 +28,40 @@ class TestBaseHISConnector:
         assert result.hn == "12345"
         assert result.principal_dx == "I21.1"
         assert result.fund == Fund.UC
+
+
+class TestConnectorRegistry:
+    def setup_method(self):
+        ConnectorRegistry._connectors.clear()
+
+    def test_register_and_get(self):
+        class DummyConnector(BaseHISConnector):
+            async def fetch_discharges(self, since): return []
+            async def fetch_claim(self, hn, an): return None
+            async def health_check(self): return True
+
+        ConnectorRegistry.register("dummy", DummyConnector)
+        connector = ConnectorRegistry.get("dummy", MagicMock())
+        assert isinstance(connector, DummyConnector)
+
+    def test_get_unknown_raises(self):
+        with pytest.raises(KeyError):
+            ConnectorRegistry.get("nonexistent", MagicMock())
+
+    def test_get_all_active(self):
+        class DummyA(BaseHISConnector):
+            async def fetch_discharges(self, since): return []
+            async def fetch_claim(self, hn, an): return None
+            async def health_check(self): return True
+
+        class DummyB(BaseHISConnector):
+            async def fetch_discharges(self, since): return []
+            async def fetch_claim(self, hn, an): return None
+            async def health_check(self): return True
+
+        ConnectorRegistry.register("a", DummyA)
+        ConnectorRegistry.register("b", DummyB)
+        settings = MagicMock()
+        settings.his_connectors = ["a", "b"]
+        connectors = ConnectorRegistry.get_all_active(settings)
+        assert len(connectors) == 2
