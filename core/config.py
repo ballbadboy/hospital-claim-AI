@@ -25,6 +25,15 @@ class Settings(BaseSettings):
     fast_track_hours: int = 24
     normal_submit_days: int = 30
 
+    his_connectors: list[str] = ["csv"]
+    hosxp_db_host: str = ""
+    hosxp_db_port: int = 3306
+    hosxp_db_name: str = "hosxp_pcu"
+    hosxp_db_user: str = ""
+    hosxp_db_password: str = ""
+    ssb_api_url: str = ""
+    ssb_api_key: str = ""
+
     cors_origins: list[str] = ["http://localhost:3000"]
 
     jwt_secret_key: str = ""

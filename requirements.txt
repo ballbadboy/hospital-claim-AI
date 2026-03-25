@@ -18,3 +18,4 @@ pyjwt==2.10.1
 passlib[bcrypt]==1.7.4
 slowapi==0.1.9
 python-json-logger==3.2.1
+aiomysql>=0.2.0
