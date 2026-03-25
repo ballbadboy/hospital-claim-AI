@@ -4,6 +4,7 @@ from sqlalchemy.orm import DeclarativeBase
 from datetime import datetime, timezone
 
 from core.config import get_settings
+from core.models import FDHStatus, AppealStatus
 
 
 def _utcnow() -> datetime:
@@ -42,9 +43,9 @@ class ClaimRecord(Base):
     ready_to_submit = Column(Boolean, default=False)
     ai_analysis = Column(String)
 
-    fdh_status = Column(String, default="pending")  # pending, submitted, approved, denied
+    fdh_status = Column(String, default=FDHStatus.PENDING)
     deny_reason = Column(String)
-    appeal_status = Column(String)  # none, drafted, submitted, approved, rejected
+    appeal_status = Column(String, default=AppealStatus.NONE)
     appeal_text = Column(String)
 
     revenue_recovered = Column(Float, default=0.0)
@@ -63,9 +64,29 @@ class AuditLog(Base):
     created_at = Column(DateTime(timezone=True), default=_utcnow)
 
 
+class User(Base):
+    __tablename__ = "users"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    username = Column(String, unique=True, index=True, nullable=False)
+    hashed_password = Column(String, nullable=False)
+    role = Column(String, nullable=False, default="readonly")
+    is_active = Column(Boolean, default=True)
+    locked_until = Column(DateTime(timezone=True), nullable=True)
+    failed_login_attempts = Column(Integer, default=0)
+    created_at = Column(DateTime(timezone=True), default=_utcnow)
+
+
 def get_engine():
     settings = get_settings()
-    return create_async_engine(settings.database_url, echo=settings.app_env == "development")
+    return create_async_engine(
+        settings.database_url,
+        echo=settings.app_env == "development",
+        pool_size=10,
+        max_overflow=20,
+        pool_timeout=30,
+        pool_recycle=1800,
+    )
 
 
 def get_session_factory():

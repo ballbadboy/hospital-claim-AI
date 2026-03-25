@@ -35,6 +35,26 @@ class Severity(str, Enum):
     OPTIMIZATION = "optimization"
 
 
+class FDHStatus(str, Enum):
+    PENDING = "pending"
+    CHECKED = "checked"
+    READY = "ready"
+    RE_CHECKING = "re_checking"
+    SUBMITTED = "submitted"
+    APPROVED = "approved"
+    DENIED = "denied"
+    CANCELLED = "cancelled"
+
+
+class AppealStatus(str, Enum):
+    NONE = "none"
+    DRAFTED = "drafted"
+    SUBMITTED = "submitted"
+    APPROVED = "approved"
+    REJECTED = "rejected"
+    RE_DRAFTED = "re_drafted"
+
+
 class ClaimInput(BaseModel):
     hn: str = Field(..., description="Hospital Number")
     an: Optional[str] = Field(None, description="Admission Number")
