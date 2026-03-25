@@ -5,6 +5,7 @@ import Login from './pages/Login'
 import DashboardPage from './pages/DashboardPage'
 import ClaimsPage from './pages/ClaimsPage'
 import ReportsPage from './pages/ReportsPage'
+import ClaimViewPage from './pages/ClaimViewPage'
 
 const queryClient = new QueryClient()
 
@@ -22,6 +23,7 @@ export default function App() {
           <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
             <Route path="/" element={<DashboardPage />} />
             <Route path="/claims" element={<ClaimsPage />} />
+            <Route path="/claims/:an" element={<ClaimViewPage />} />
             <Route path="/reports" element={<ReportsPage />} />
           </Route>
         </Routes>
