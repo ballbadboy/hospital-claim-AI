@@ -9,6 +9,7 @@ from slowapi.middleware import SlowAPIMiddleware
 from api.routes import router
 from api.auth.routes import auth_router, limiter
 from api.routes_his import his_router
+from api.routes_reports import reports_router
 from core.config import get_settings, setup_logging
 
 settings = get_settings()
@@ -47,6 +48,7 @@ app.add_middleware(
 app.include_router(auth_router)
 app.include_router(router)
 app.include_router(his_router)
+app.include_router(reports_router)
 
 
 if __name__ == "__main__":
