@@ -27,6 +27,11 @@ class Settings(BaseSettings):
 
     cors_origins: list[str] = ["http://localhost:3000"]
 
+    jwt_secret_key: str = ""
+    jwt_algorithm: str = "HS256"
+    jwt_access_token_minutes: int = 15
+    jwt_refresh_token_hours: int = 8
+
     class Config:
         env_file = ".env"
 
@@ -38,8 +43,15 @@ def get_settings() -> Settings:
 
 def setup_logging() -> None:
     settings = get_settings()
-    logging.basicConfig(
-        level=getattr(logging, settings.log_level.upper(), logging.INFO),
-        format="%(asctime)s %(name)s %(levelname)s %(message)s",
-    )
+    from pythonjsonlogger import jsonlogger
+
+    handler = logging.StreamHandler()
+    handler.setFormatter(jsonlogger.JsonFormatter(
+        fmt="%(asctime)s %(name)s %(levelname)s %(message)s",
+        rename_fields={"asctime": "timestamp", "levelname": "level"},
+    ))
+    root = logging.getLogger()
+    root.handlers.clear()
+    root.addHandler(handler)
+    root.setLevel(getattr(logging, settings.log_level.upper(), logging.INFO))
     logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
