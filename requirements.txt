@@ -4,8 +4,8 @@ anthropic==0.40.0
 sqlalchemy==2.0.36
 asyncpg==0.30.0
 alembic==1.14.0
-pydantic==2.10.0
-pydantic-settings==2.6.0
+pydantic>=2.10.0
+pydantic-settings>=2.6.0
 python-multipart==0.0.12
 pandas==2.2.3
 openpyxl==3.1.5
