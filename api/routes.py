@@ -223,5 +223,6 @@ async def health_check():
             "ai_engine": "configured" if settings.anthropic_api_key else "not_configured",
             "line": "configured" if settings.line_channel_token else "not_configured",
             "fdh": "configured" if settings.fdh_api_key else "not_configured",
+            "his_connectors": settings.his_connectors,
         },
     }
