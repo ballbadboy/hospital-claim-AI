@@ -212,6 +212,50 @@ async def get_dashboard_stats(
     )
 
 
+@router.get("/claims")
+async def list_claims(
+    page: int = 1,
+    size: int = 50,
+    department: str = None,
+    fdh_status: str = None,
+    user: dict = Depends(get_current_user),
+    session=Depends(get_db_session),
+):
+    """List claims with pagination and filters."""
+    from sqlalchemy import func, select
+    from core.database import ClaimRecord
+
+    claim_repo = ClaimRepository(session)
+    claims = await claim_repo.list_claims(
+        page=page, size=size, department=department, fdh_status=fdh_status
+    )
+
+    # Get total count for pagination
+    query = select(func.count(ClaimRecord.id))
+    if department:
+        query = query.where(ClaimRecord.department == department)
+    if fdh_status:
+        query = query.where(ClaimRecord.fdh_status == fdh_status)
+    total = (await session.execute(query)).scalar() or 0
+
+    return {
+        "claims": [
+            {
+                "an": c.an, "hn": c.hn, "department": c.department,
+                "fdh_status": c.fdh_status, "score": c.check_score,
+                "ready_to_submit": c.ready_to_submit,
+                "principal_dx": c.principal_dx,
+                "created_at": c.created_at,
+            }
+            for c in claims
+        ],
+        "total": total,
+        "page": page,
+        "size": size,
+        "pages": (total + size - 1) // size if size > 0 else 0,
+    }
+
+
 @router.get("/health")
 async def health_check():
     from core.config import get_settings
