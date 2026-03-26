@@ -1,7 +1,7 @@
 import logging
 
 import pandas as pd
-from fastapi import APIRouter, UploadFile, File, HTTPException, Depends
+from fastapi import APIRouter, UploadFile, File, HTTPException, Depends, Query
 from sqlalchemy import func, select
 
 from core.models import (
@@ -81,6 +81,11 @@ async def check_csv_upload(
         raise HTTPException(413, f"File too large. Maximum {MAX_CSV_SIZE // 1024 // 1024} MB")
 
     df = pd.read_csv(io.BytesIO(content))
+
+    required_cols = {"HN", "PDx"}
+    missing = required_cols - set(df.columns)
+    if missing:
+        raise HTTPException(400, f"Missing required columns: {missing}. Found: {list(df.columns)}")
 
     if len(df) > 500:
         raise HTTPException(400, "Maximum 500 rows per CSV upload")
@@ -214,8 +219,8 @@ async def get_dashboard_stats(
 
 @router.get("/claims")
 async def list_claims(
-    page: int = 1,
-    size: int = 50,
+    page: int = Query(default=1, ge=1),
+    size: int = Query(default=50, ge=1, le=200),
     department: str = None,
     fdh_status: str = None,
     user: dict = Depends(get_current_user),

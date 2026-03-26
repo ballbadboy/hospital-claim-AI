@@ -88,8 +88,8 @@ class Optimization(BaseModel):
     money_impact: float = Field(description="Delta baht (base rate 8,350)")
 
 
-class CheckResult(BaseModel):
-    """Output model: Pre-submission validation result."""
+class CathLabCheckResult(BaseModel):
+    """Output model: Pre-submission validation result for Cath Lab claims."""
 
     an: str
     score: int = Field(ge=0, le=100)

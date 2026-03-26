@@ -30,8 +30,10 @@ def _parse_list(s: str) -> list[str]:
     return [x.strip() for x in s.split(",") if x.strip()]
 
 
-def parse_eclaim_csv(content: str) -> list[CathLabClaim]:
+def parse_eclaim_csv(content: str) -> tuple[list[CathLabClaim], list[dict]]:
     """Parse e-Claim CSV export into CathLabClaim objects.
+
+    Returns (claims, skipped) where skipped is a list of {"row": int, "error": str}.
 
     Format based on real file: eclaim_11855_IP_25690316_085002242.ecd
     Header row starts with: REP No., ลำดับที่, TRAN_ID, HN, AN, PID, ...
@@ -58,8 +60,9 @@ def parse_eclaim_csv(content: str) -> list[CathLabClaim]:
     # ... DRG(34), RW(35), ...
 
     claims = []
+    skipped = []
 
-    for row in rows[header_idx + 1:]:
+    for row_num, row in enumerate(rows[header_idx + 1:], start=header_idx + 2):
         if len(row) < 36:
             continue
 
@@ -106,10 +109,11 @@ def parse_eclaim_csv(content: str) -> list[CathLabClaim]:
 
             claims.append(claim)
 
-        except (ValueError, IndexError):
+        except (ValueError, IndexError) as e:
+            skipped.append({"row": row_num, "error": str(e)})
             continue
 
-    return claims
+    return claims, skipped
 
 
 def parse_eclaim_csv_file(file_path: str) -> list[CathLabClaim]:

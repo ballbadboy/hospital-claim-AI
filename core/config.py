@@ -1,5 +1,6 @@
 import logging
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings
 from functools import lru_cache
 
@@ -40,6 +41,14 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     jwt_access_token_minutes: int = 15
     jwt_refresh_token_hours: int = 8
+
+    @field_validator("jwt_secret_key")
+    @classmethod
+    def validate_jwt_secret(cls, v: str) -> str:
+        # Allow empty in tests/dev — main.py lifespan checks at startup
+        if v and len(v) < 32:
+            raise ValueError("jwt_secret_key must be at least 32 characters when set")
+        return v
 
     class Config:
         env_file = ".env"

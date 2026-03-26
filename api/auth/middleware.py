@@ -9,6 +9,8 @@ from api.auth.jwt_handler import decode_token, InvalidToken
 logger = logging.getLogger(__name__)
 security = HTTPBearer()
 
+# TODO: Move to Redis or DB table before production deployment.
+# In-memory revocation does not survive restarts or multi-worker setups.
 _revoked_tokens: set[str] = set()
 _revoked_user_ids: set[int] = set()
 

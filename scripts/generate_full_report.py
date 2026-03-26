@@ -388,5 +388,6 @@ def generate_full_report(output_path: str):
 
 
 if __name__ == "__main__":
-    output = "/Users/ballbadboy/Desktop/projectX/Hospital claim AI/hospital-claim-ai-app/docs/CathLab_Report_AN69-03556.docx"
+    import sys
+    output = sys.argv[1] if len(sys.argv) > 1 else "docs/CathLab_Report_AN69-03556.docx"
     generate_full_report(output)

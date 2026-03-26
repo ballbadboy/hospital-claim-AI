@@ -1,18 +1,28 @@
 """Cath Lab API Routes — Pre-submission check + Post-denial analysis."""
 
-from fastapi import APIRouter, UploadFile, File, HTTPException
+import logging
 
-from core.cathlab_models import CathLabClaim, CheckResult, DenyAnalysis, DRGInfo
+from fastapi import APIRouter, UploadFile, File, HTTPException, Depends
+
+from core.cathlab_models import CathLabClaim, CathLabCheckResult, DenyAnalysis, DRGInfo
 from core.cathlab_validator import validate_cathlab_claim
 from core.deny_analyzer import analyze_deny
 from core.drg_calculator import lookup_drg
 from core.eclaim_parser import parse_eclaim_csv
+from api.auth.middleware import get_current_user
+
+logger = logging.getLogger(__name__)
+
+MAX_ECLAIM_CSV_SIZE = 10 * 1024 * 1024  # 10 MB
 
 router = APIRouter(prefix="/api/v1/cathlab", tags=["Cath Lab"])
 
 
-@router.post("/check", response_model=CheckResult)
-async def check_claim(claim: CathLabClaim):
+@router.post("/check", response_model=CathLabCheckResult)
+async def check_claim(
+    claim: CathLabClaim,
+    user: dict = Depends(get_current_user),
+):
     """Pre-submission validation: ตรวจ 8 checkpoints + CC/MCC optimization.
 
     ส่ง claim data มา → ได้ score + issues + optimization suggestions กลับ
@@ -22,7 +32,10 @@ async def check_claim(claim: CathLabClaim):
 
 
 @router.post("/analyze-deny", response_model=DenyAnalysis)
-async def analyze_deny_claim(claim: CathLabClaim):
+async def analyze_deny_claim(
+    claim: CathLabClaim,
+    user: dict = Depends(get_current_user),
+):
     """Post-denial analysis: วิเคราะห์สาเหตุ deny + แนะนำวิธีแก้ + draft appeal.
 
     ส่ง denied claim data มา (ต้องมี deny_codes) → ได้ root cause + fix steps + appeal draft
@@ -34,7 +47,10 @@ async def analyze_deny_claim(claim: CathLabClaim):
 
 
 @router.post("/parse-eclaim")
-async def parse_eclaim_file(file: UploadFile = File(...)):
+async def parse_eclaim_file(
+    file: UploadFile = File(...),
+    user: dict = Depends(get_current_user),
+):
     """Parse e-Claim CSV export → structured CathLabClaim objects.
 
     Upload ไฟล์ CSV จาก e-Claim export → ได้ list ของ claims พร้อม validate
@@ -43,12 +59,17 @@ async def parse_eclaim_file(file: UploadFile = File(...)):
         raise HTTPException(status_code=400, detail="รองรับเฉพาะไฟล์ .csv")
 
     content = await file.read()
+    if len(content) > MAX_ECLAIM_CSV_SIZE:
+        raise HTTPException(status_code=413, detail=f"ไฟล์ใหญ่เกินไป (สูงสุด {MAX_ECLAIM_CSV_SIZE // 1024 // 1024} MB)")
+
     text = content.decode("utf-8-sig")
 
-    claims = parse_eclaim_csv(text)
+    claims, skipped = parse_eclaim_csv(text)
 
     if not claims:
         raise HTTPException(status_code=400, detail="ไม่พบข้อมูล claim ในไฟล์")
+
+    logger.info("eclaim_parse", extra={"user": user.get("sub"), "total_parsed": len(claims), "skipped": len(skipped)})
 
     # Validate each claim
     results = []
@@ -61,12 +82,17 @@ async def parse_eclaim_file(file: UploadFile = File(...)):
 
     return {
         "total_claims": len(claims),
+        "skipped_rows": len(skipped),
+        "skipped_details": skipped[:20],
         "results": results,
     }
 
 
 @router.get("/drg-lookup/{drg_code}", response_model=DRGInfo)
-async def drg_lookup(drg_code: str):
+async def drg_lookup(
+    drg_code: str,
+    user: dict = Depends(get_current_user),
+):
     """Lookup DRG info: RW, WtLOS, OT, payment estimate.
 
     ใส่ DRG code เช่น 05290 → ได้ข้อมูล RW + ค่าจ่าย

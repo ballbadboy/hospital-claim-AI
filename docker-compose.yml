@@ -1,3 +1,6 @@
+# WARNING: This compose file is for DEVELOPMENT only.
+# Do NOT use in production — volume mount exposes source code and .env secrets.
+# For production, use a separate docker-compose.prod.yml without volume mounts.
 services:
   app:
     build: .
@@ -9,7 +12,7 @@ services:
         condition: service_healthy
     restart: unless-stopped
     volumes:
-      - .:/app
+      - .:/app  # DEV ONLY — remove for production
 
   db:
     image: postgres:16-alpine

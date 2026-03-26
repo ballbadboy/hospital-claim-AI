@@ -4,7 +4,7 @@ import re
 from datetime import datetime
 
 from core.cathlab_models import (
-    CathLabClaim, CheckpointResult, CheckResult, Optimization,
+    CathLabClaim, CheckpointResult, CathLabCheckResult, Optimization,
 )
 from core.drg_calculator import lookup_drg, calculate_payment, BASE_RATE_IN_ZONE
 
@@ -276,7 +276,7 @@ def checkpoint_8_drug_lab(claim: CathLabClaim) -> CheckpointResult:
     return CheckpointResult(checkpoint=8, name="Drug/Lab Catalog", status="warning", message=" | ".join(issues))
 
 
-def validate_cathlab_claim(claim: CathLabClaim) -> CheckResult:
+def validate_cathlab_claim(claim: CathLabClaim) -> CathLabCheckResult:
     """Run all 8 checkpoints on a Cath Lab claim."""
     checkpoints = []
     auto_fixes = []
@@ -336,7 +336,7 @@ def validate_cathlab_claim(claim: CathLabClaim) -> CheckResult:
     expected_rw = drg_info.rw if drg_info else claim.rw
     expected_payment = round(expected_rw * BASE_RATE_IN_ZONE, 2) if expected_rw else None
 
-    return CheckResult(
+    return CathLabCheckResult(
         an=claim.an,
         score=score,
         status=status,
