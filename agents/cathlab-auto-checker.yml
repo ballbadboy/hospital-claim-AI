@@ -1,0 +1,421 @@
+# =============================================================
+# CATH LAB AUTO-CHECKER AGENT
+# Hospital Claim AI — Pre-submission Automation
+# Version 1.0 — March 2026
+# =============================================================
+
+name: cathlab-auto-checker
+description: >
+  Agent อัตโนมัติที่สแกนเคส Cath Lab จาก HIS ทุกวัน
+  ตรวจ 8 checkpoints → แก้อัตโนมัติ → optimize CC/MCC → ส่ง FDH
+  เป้าหมาย: Zero Deny Rate สำหรับห้อง Cath Lab
+
+# =============================================================
+# SKILLS
+# =============================================================
+skills:
+  - cathlab-claim-checker   # 8 checkpoints เฉพาะ Cath Lab
+  - icd-coding              # แนะนำ/แก้ ICD codes
+  - claim-validator         # validate ก่อนส่ง
+  - deny-analyzer           # วิเคราะห์ถ้าถูก deny
+
+# =============================================================
+# KNOWLEDGE BASE (อ่านทุกครั้งที่ทำงาน)
+# =============================================================
+knowledge:
+  always_load:
+    - skills/cathlab-claim-checker/references/validation-rules.md
+    - skills/cathlab-claim-checker/references/drg-rw-table-cardiac.md
+    - skills/cathlab-claim-checker/references/cardiac-codes.md
+
+  load_on_demand:
+    - skills/cathlab-claim-checker/references/clinical-criteria.md
+    - skills/cathlab-claim-checker/references/deny-fixes.md
+    - skills/cathlab-claim-checker/references/fdh-16files.md
+    - references/nhso-rules/deny-codes.md
+    - references/nhso-rules/eclaim-system-guide.md
+    - knowledge/core-rules.md
+    - knowledge/cath-lab.md
+
+# =============================================================
+# TOOLS
+# =============================================================
+tools:
+  - name: his-connector
+    type: database
+    description: ดึง Cath Lab cases จาก HIS
+    config:
+      connection: ${HOSXP_CONNECTION}
+      query_filter: "department = 'CATH_LAB' AND discharge_date >= CURDATE() - 1"
+
+  - name: eclaim-api
+    type: api
+    description: ส่งข้อมูลเข้า e-Claim / FDH
+    config:
+      base_url: ${FDH_API_URL}
+      auth: bearer_token
+
+  - name: line-notify
+    type: notification
+    config:
+      token: ${LINE_NOTIFY_TOKEN}
+      group: cathlab-billing
+
+  - name: database
+    type: database
+    description: บันทึกผลลง PostgreSQL
+    config:
+      connection: ${DATABASE_URL}
+
+# =============================================================
+# PIPELINE: 8 STEPS (Fully Automated)
+# =============================================================
+pipeline:
+
+  # ─── STEP 1: SCAN ───
+  - step: scan_discharges
+    description: สแกนเคส Cath Lab ที่ discharge แล้วแต่ยังไม่ส่งเบิก
+    schedule: daily_07am
+    tool: his-connector
+    query: |
+      SELECT
+        an, hn, cid, patient_name, age, sex,
+        admit_date, discharge_date, discharge_type,
+        principal_dx, secondary_dx, procedures,
+        devices, drugs, claim_amount, authen_code,
+        cath_report_exists, troponin_result, ekg_result,
+        d2b_time, stent_type, stent_count, stent_serial
+      FROM cath_lab_discharges
+      WHERE fdh_status IS NULL
+        AND discharge_date >= CURDATE() - INTERVAL 7 DAY
+      ORDER BY claim_amount DESC
+    output:
+      cases: list[CathLabCase]
+      count: number
+    on_empty:
+      notify: "ไม่มีเคส Cath Lab ที่รอส่ง"
+      action: sleep_until_next_schedule
+
+  # ─── STEP 2: VALIDATE EACH CASE ───
+  - step: validate
+    description: ตรวจทุกเคสด้วย 8 checkpoints
+    skill: cathlab-claim-checker
+    for_each: cases
+    checkpoints:
+      1_basic_data:
+        check: [an, hn, cid_checksum, pdx_exists, sex_age_match, dates_valid]
+        auto_fix: [date_format, cid_checksum]
+
+      2_dx_proc_match:
+        check: [pdx_proc_consistency, stemi_has_pci, pci_has_acute_dx]
+        auto_fix: false  # ต้อง review
+        flag_if_mismatch: critical
+
+      3_device_docs:
+        check: [stent_type_code, serial_match_gpo, qty_match_proc, rate_ceiling]
+        auto_fix: [stent_type_code]
+        flag_if_missing: [serial_number, gpo_record]
+
+      4_file_completeness:
+        check: [ipd_file, dia_file, opr_file, adp_file, dru_file, cha_file, ins_file]
+        auto_fix: [date_format, field_padding]
+
+      5_timing:
+        check: [submit_within_30d, authen_code_valid, authen_not_expired]
+        auto_fix: false
+        alert_if: "days_remaining < 5"
+
+      6_cc_mcc_optimization:
+        check: [dm_specific, hf_specific, ckd_staged, sepsis_organ, af_coded]
+        auto_fix: suggest_only  # แนะนำแต่ต้อง confirm
+        estimate_impact: true   # คำนวณเงินที่เพิ่ม
+
+      7_drg_verification:
+        check: [expected_drg_match, rw_reasonable, los_within_trim]
+        reference: drg-rw-table-cardiac.md
+
+      8_drug_lab_catalog:
+        check: [drug_tmt_match, lab_catalog_match, heparin, clopidogrel, ticagrelor]
+        auto_fix: [tmt_mapping]
+
+    output:
+      score: number           # 0-100
+      status: enum[pass, warning, critical]
+      auto_fixed: list[string]
+      needs_review: list[string]
+      optimization_suggestions: list[{code, reason, rw_impact, money_impact}]
+      expected_drg: string
+      expected_rw: float
+      expected_payment: float
+
+  # ─── STEP 3: AUTO-FIX ───
+  - step: auto_fix
+    description: แก้ไขอัตโนมัติสิ่งที่แก้ได้
+    condition: "auto_fixed is not empty"
+    actions:
+      - apply_fixes_to_his_data
+      - log_all_changes_to_audit
+      - recalculate_drg_after_fix
+
+    fixes_allowed:
+      - date_format_correction      # แก้ format วันที่
+      - cid_checksum_fix            # แก้ digit 13
+      - stent_type_code_mapping     # map stent code ให้ตรง
+      - drug_tmt_mapping            # map drug → TMT
+      - field_padding               # เติม field ที่ขาด (format)
+
+    fixes_NOT_allowed:
+      - change_diagnosis            # ห้ามเปลี่ยน Dx อัตโนมัติ
+      - change_procedure            # ห้ามเปลี่ยน Proc อัตโนมัติ
+      - add_cc_mcc                  # ห้ามเพิ่ม CC/MCC อัตโนมัติ
+      - change_claim_amount         # ห้ามเปลี่ยนยอดเงิน
+
+  # ─── STEP 4: CC/MCC OPTIMIZATION ───
+  - step: optimize_ccmcc
+    description: แนะนำ CC/MCC ที่ขาดแต่ควรมี
+    skill: icd-coding
+    condition: "optimization_suggestions is not empty"
+
+    logic:
+      # ดู clinical data จริงก่อนแนะนำ
+      - if: "EF < 40% AND no_hf_code"
+        suggest: "I50.21 (Acute systolic HF)"
+        impact: "MCC → RW +20-40%"
+
+      - if: "eGFR 15-29 AND ckd_not_staged"
+        suggest: "N18.4 (CKD Stage 4)"
+        impact: "MCC → RW +20-40%"
+
+      - if: "DM_coded_as_E119 AND has_complications"
+        suggest: "E11.2x-E11.6x"
+        impact: "CC → RW +5-15%"
+
+      - if: "troponin_elevated AND coded_as_UA"
+        suggest: "Change I20.0 → I21.4 (NSTEMI)"
+        impact: "Different DRG group → RW significantly higher"
+
+    output:
+      suggestions: list[{current_code, suggested_code, reason, clinical_evidence, money_impact}]
+      total_potential_increase: float  # บาท
+
+    requires_human_approval: true  # ต้องให้ coder/แพทย์ confirm
+
+  # ─── STEP 5: HUMAN REVIEW (ถ้าจำเป็น) ───
+  - step: human_review
+    description: ส่งให้คนตรวจเฉพาะเคสที่ต้อง review
+    condition: "status == 'critical' OR needs_review is not empty OR optimization_suggestions is not empty"
+
+    channels:
+      line_notify:
+        template: |
+          🏥 Cath Lab Claim Check
+          ━━━━━━━━━━━━━━━━━━━
+          AN: {an} | {patient_name}
+          Dx: {principal_dx} | Proc: {procedures}
+          Score: {score}/100 | Status: {status}
+
+          💰 Expected: {expected_payment:,.0f} บาท
+          {if optimization_suggestions}
+          💡 เพิ่มได้: +{total_potential_increase:,.0f} บาท
+          {suggestions_summary}
+          {endif}
+
+          {if needs_review}
+          ⚠️ ต้อง Review:
+          {needs_review_list}
+          {endif}
+
+          [✅ อนุมัติ] [✏️ แก้ไข] [⏸ รอ]
+
+      web_dashboard:
+        show: full_case_detail
+        highlight: issues_and_suggestions
+
+    timeout: 24_hours
+    on_timeout:
+      - if: "score >= 85 AND status != 'critical'"
+        action: auto_approve  # ส่งเลยถ้า score สูงพอ
+      - else:
+        action: escalate_to_supervisor
+
+    responses:
+      approve:
+        action: proceed_to_submit
+        log: "Approved by {reviewer} at {timestamp}"
+
+      approve_with_optimization:
+        action: apply_suggestions_then_submit
+        log: "Approved with CC/MCC optimization by {reviewer}"
+
+      modify:
+        action: return_to_step_2  # validate ใหม่หลังแก้
+
+      hold:
+        action: pause_case
+        reminder: 12_hours
+
+  # ─── STEP 6: PRE-SUBMIT VALIDATION ───
+  - step: final_validation
+    description: ตรวจรอบสุดท้ายก่อนส่ง FDH
+    skill: claim-validator
+
+    checks:
+      - all_16_files_complete
+      - no_critical_issues
+      - drg_grouper_simulation  # จำลอง DRG ก่อนส่งจริง
+      - authen_code_still_valid
+      - within_submission_deadline
+
+    on_pass: proceed_to_submit
+    on_fail: return_to_step_5_with_issues
+
+  # ─── STEP 7: SUBMIT TO FDH ───
+  - step: submit
+    description: ส่งข้อมูลเข้า e-Claim / FDH
+    tool: eclaim-api
+
+    actions:
+      - generate_16_files
+      - submit_to_fdh
+      - capture_submission_id
+      - log_to_database:
+          table: claim_records
+          fields: [an, submission_date, expected_drg, expected_rw, expected_payment, score, auto_fixes_applied]
+      - notify_team: "✅ ส่ง AN:{an} แล้ว | DRG:{expected_drg} | RW:{expected_rw} | ~{expected_payment:,.0f} บาท"
+
+  # ─── STEP 8: TRACK RESULT ───
+  - step: track_result
+    description: ติดตามผลจาก สปสช.
+    schedule: check_every_3_days
+
+    actions:
+      check_status:
+        tool: eclaim-api
+        endpoint: /status/{submission_id}
+
+      on_approved:
+        - update_status: approved
+        - calculate_actual_vs_expected
+        - notify: "✅ AN:{an} ผ่าน! ได้ {actual_payment:,.0f} บาท (คาด {expected_payment:,.0f})"
+        - save_to_success_log
+        - update_accuracy_metrics
+
+      on_c_error:
+        - update_status: c_error
+        - auto_analyze_c_code
+        - if_auto_fixable: fix_and_resubmit
+        - if_not: escalate_to_denial_fighter
+        - notify: "⚠️ AN:{an} ติด C-{error_code} | กำลังแก้อัตโนมัติ..."
+
+      on_denied:
+        - update_status: denied
+        - handoff_to: denial-fighter  # ส่งต่อให้ Denial Fighter Agent
+        - notify: "❌ AN:{an} ถูก Deny: {deny_reason} | ส่งต่อ Denial Fighter"
+
+# =============================================================
+# AUTOMATION RULES
+# =============================================================
+automation:
+
+  # เคส score สูง → ส่งอัตโนมัติ ไม่ต้องรอคน
+  auto_submit:
+    condition: "score >= 90 AND status == 'pass' AND no_optimization_pending"
+    human_review: false
+    notify: true  # แจ้ง LINE เฉยๆ
+
+  # เคส score ปานกลาง → ส่งได้แต่แจ้ง
+  semi_auto:
+    condition: "score >= 70 AND status == 'warning'"
+    human_review: true
+    auto_approve_timeout: 24_hours
+
+  # เคส score ต่ำ → ห้ามส่ง ต้องรอคนแก้
+  manual_only:
+    condition: "score < 70 OR status == 'critical'"
+    human_review: required
+    escalate_if_no_response: 48_hours
+
+  # Deadline alert
+  deadline_alert:
+    - at: 25_days_after_discharge
+      message: "⏰ AN:{an} เหลือ 5 วัน! Score:{score} — ต้องส่งด่วน"
+    - at: 28_days_after_discharge
+      message: "🚨 AN:{an} เหลือ 2 วัน! ต้องส่งวันนี้!"
+    - at: 30_days_after_discharge
+      message: "❌ AN:{an} หมดเวลา! ต้องส่งทันทีหรือเสียสิทธิ์"
+
+# =============================================================
+# LEARNING & FEEDBACK
+# =============================================================
+feedback_loop:
+
+  on_approved:
+    - compare: expected_drg vs actual_drg
+    - compare: expected_rw vs actual_rw
+    - if_different: log_discrepancy_for_analysis
+    - update: accuracy_model
+    - save_case: references/hospital-data/cathlab-approved-cases.md
+
+  on_denied:
+    - analyze_why_agent_missed_it
+    - update: validation_rules (add new check if needed)
+    - save_case: references/hospital-data/cathlab-denied-cases.md
+
+  weekly_report:
+    schedule: every_monday_09am
+    content:
+      - total_cases_processed
+      - auto_submit_count (no human needed)
+      - human_review_count
+      - approval_rate
+      - total_revenue_submitted
+      - total_revenue_received
+      - cc_mcc_optimization_impact (เงินที่เพิ่มจาก optimization)
+      - top_issues_found
+      - accuracy: expected_vs_actual_drg
+    send_to: [line_cathlab_billing, web_dashboard, email_dept_head]
+
+# =============================================================
+# KPIs
+# =============================================================
+kpis:
+  - name: pre_submission_catch_rate
+    description: จับ error ได้ก่อนส่งกี่ %
+    target: "> 95%"
+    measure: errors_caught / total_errors
+
+  - name: auto_submit_rate
+    description: ส่งอัตโนมัติได้โดยไม่ต้องพึ่งคนกี่ %
+    target: "> 60% of all Cath Lab cases"
+
+  - name: zero_deny_rate
+    description: เคสที่ส่งแล้วไม่ถูก deny
+    target: "> 97% (deny < 3%)"
+
+  - name: cc_mcc_capture_rate
+    description: CC/MCC ที่ AI แนะนำแล้ว coder เห็นด้วย
+    target: "> 80%"
+
+  - name: revenue_uplift
+    description: เงินที่เพิ่มจาก CC/MCC optimization ต่อเดือน
+    target: "> 100,000 บาท/เดือน"
+
+  - name: turnaround_time
+    description: เวลาเฉลี่ยตั้งแต่ discharge จน submit
+    target: "< 3 วัน (fast track < 24 ชม.)"
+
+  - name: accuracy
+    description: DRG ที่คาด vs DRG จริง ตรงกันกี่ %
+    target: "> 90%"
+
+# =============================================================
+# INTEGRATION
+# =============================================================
+integrates_with:
+  - agent: denial-fighter
+    trigger: on_denied
+    handoff: full_case_data + analysis_result
+
+  - dashboard: /cathlab
+    realtime: true
+    widgets: [cases_today, score_distribution, revenue_pipeline, deadline_countdown]

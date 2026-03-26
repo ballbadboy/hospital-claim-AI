@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "hospital-db": {
+      "command": "npx",
+      "args": ["-y", "@anthropic-ai/mcp-server-postgres", "postgresql://user:pass@localhost:5432/hospital_claim_ai"],
+      "description": "Hospital Claim AI PostgreSQL database — claims, audit logs, users"
+    },
+    "hosxp": {
+      "command": "npx",
+      "args": ["-y", "@anthropic-ai/mcp-server-mysql", "mysql://user:pass@192.168.1.100:3306/hosxp_pcu"],
+      "description": "HOSxP HIS database — patient records, admissions, discharges",
+      "disabled": true
+    }
+  }
+}
