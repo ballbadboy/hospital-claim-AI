@@ -1,0 +1,37 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+*.egg-info/
+
+# Environment
+.env
+.env.local
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test output
+test_*.csv
+claim_reports/
+claim_reports_*/
+
+# Node
+node_modules/
+dashboard/node_modules/
+
+# Database
+*.db
+*.sqlite3
+
+# Secrets
+credentials.json
+*.pem
+*.key

@@ -1,0 +1,35 @@
+# WARNING: This compose file is for DEVELOPMENT only.
+# Do NOT use in production — volume mount exposes source code and .env secrets.
+# For production, use a separate docker-compose.prod.yml without volume mounts.
+services:
+  app:
+    build: .
+    ports:
+      - "8000:8000"
+    env_file: .env
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+    volumes:
+      - .:/app  # DEV ONLY — remove for production
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: hospital_claim_ai
+      POSTGRES_USER: hcai
+      POSTGRES_PASSWORD: hcai_dev_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hcai"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  pgdata:
