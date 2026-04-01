@@ -1,0 +1,332 @@
+# =============================================================
+# DENIAL FIGHTER AGENT
+# Hospital Claim AI — by Dr.Kasemson Kasemwong
+# Version 1.0 — March 2026
+# =============================================================
+# วางไฟล์นี้ที่: hospital-claim-ai/agents/denial-fighter.yml
+# =============================================================
+
+name: denial-fighter
+description: >
+  AI Agent ที่วิเคราะห์ claim ที่ถูก deny จาก สปสช.
+  หาสาเหตุ แนะนำวิธีแก้ ร่าง appeal letter
+  และติดตามจนได้เงินคืน
+
+# =============================================================
+# SKILLS ที่ใช้ (ต้องสร้างแต่ละ skill ก่อน)
+# =============================================================
+skills:
+  - deny-analyzer      # วิเคราะห์สาเหตุ deny
+  - icd-coding         # แนะนำ ICD-10 code ที่ถูกต้อง
+  - claim-validator    # ตรวจ completeness ก่อน resubmit
+  - appeal-drafter     # ร่าง appeal letter ภาษาไทย
+
+# =============================================================
+# TOOLS ที่เชื่อม (ผ่าน MCP หรือ API)
+# =============================================================
+tools:
+  - name: his-connector
+    type: database
+    description: ดึง claim data จาก HIS (HOSxP/JHCIS)
+    config:
+      # Enterprise plan เท่านั้น
+      # Starter/Pro ใช้ CSV upload แทน
+      connection: mysql://readonly@his-server:3306/hosxp
+
+  - name: eclaim-api
+    type: api
+    description: ส่ง resubmit ไป สปสช. e-Claim
+    config:
+      base_url: https://eclaim.nhso.go.th/api
+      auth: bearer_token  # ต้องขอจาก สปสช. แต่ละ รพ.
+
+  - name: line-notify
+    type: notification
+    description: แจ้งเตือนทีม billing ผ่าน LINE
+    config:
+      token: ${LINE_NOTIFY_TOKEN}
+      group: billing-team
+
+# =============================================================
+# PIPELINE: 7 STEPS
+# =============================================================
+pipeline:
+
+  # ----- STEP 1: INGEST -----
+  - step: ingest
+    description: รับ claim ที่ถูก deny เข้าสู่ระบบ
+    input:
+      sources:
+        - csv_upload          # Upload ผ่าน webapp
+        - his_connector       # ดึงจาก HIS อัตโนมัติ (Enterprise)
+        - manual_form         # กรอกทีละ case (Starter)
+    output:
+      schema:
+        claim_id: string
+        patient_hn: string
+        patient_name: string      # เฉพาะ internal, ไม่ส่งออก
+        visit_date: date
+        icd10_primary: string     # เช่น J18.9
+        icd10_secondary: string[] # diagnosis ร่วม
+        procedure_codes: string[] # เช่น 39.61
+        drg_code: string          # เช่น 04901
+        charge_amount: number     # จำนวนเงินที่เรียกเก็บ
+        expected_reimbursement: number
+        deny_code: string         # รหัส deny ของ สปสช.
+        deny_reason_text: string  # เหตุผลที่ สปสช. ระบุ
+        submission_date: date
+        denial_date: date
+        clinical_notes: string    # optional, ถ้ามี
+    schedule: daily_8am           # ดึงอัตโนมัติทุกเช้า
+
+  # ----- STEP 2: CLASSIFY -----
+  - step: classify
+    description: จำแนกประเภทและความรุนแรงของ deny
+    skill: deny-analyzer
+    reference: references/nhso-rules/deny-codes.md
+    logic:
+      categories:
+        - coding_error:
+            patterns:
+              - "ICD ไม่ตรง"
+              - "รหัสโรคไม่สอดคล้อง"
+              - "DRG grouping ผิด"
+              - "procedure ไม่ match"
+            recovery_chance: high  # 70-90%
+
+        - document_missing:
+            patterns:
+              - "เอกสารไม่ครบ"
+              - "ไม่แนบใบรับรอง"
+              - "ไม่มี pre-authorization"
+            recovery_chance: high  # 60-85%
+
+        - eligibility_issue:
+            patterns:
+              - "สิทธิ์ไม่ตรง"
+              - "CID ไม่ถูกต้อง"
+              - "หมดสิทธิ์"
+              - "ซ้ำซ้อนกับสิทธิ์อื่น"
+            recovery_chance: medium  # 40-60%
+
+        - timeline_violation:
+            patterns:
+              - "ส่งเกินกำหนด"
+              - "เลยระยะเวลา"
+              - "ส่งซ้ำ"
+            recovery_chance: low  # 20-40%
+
+        - clinical_criteria:
+            patterns:
+              - "ไม่เข้าเกณฑ์"
+              - "ระยะเวลานอน ไม่เหมาะสม"
+              - "admission ไม่จำเป็น"
+            recovery_chance: medium  # 50-70%
+
+      severity_scoring:
+        high:
+          condition: "amount > 10000 AND recovery_chance > 0.7"
+          action: priority_queue
+        medium:
+          condition: "amount 3000-10000 AND recovery_chance > 0.5"
+          action: normal_queue
+        low:
+          condition: "amount < 3000 OR recovery_chance < 0.5"
+          action: batch_process
+
+  # ----- STEP 3: ANALYZE -----
+  - step: analyze
+    description: วิเคราะห์สาเหตุรากและหาวิธีแก้
+    skills:
+      - deny-analyzer
+      - icd-coding
+    references:
+      - references/nhso-rules/deny-codes.md
+      - references/nhso-rules/icd10-common-errors.md
+      - references/nhso-rules/drg-rules-2568.md
+      - references/hospital-data/deny-patterns.md
+
+    prompt_template: |
+      คุณคือผู้เชี่ยวชาญ medical coding และระบบเบิกจ่าย สปสช.
+
+      ## Claim ที่ถูก deny:
+      - Claim ID: {claim_id}
+      - Deny code: {deny_code}
+      - Deny reason: {deny_reason_text}
+      - ICD-10 primary: {icd10_primary}
+      - ICD-10 secondary: {icd10_secondary}
+      - Procedures: {procedure_codes}
+      - DRG: {drg_code}
+      - มูลค่า: {charge_amount} บาท
+
+      ## Clinical notes (ถ้ามี):
+      {clinical_notes}
+
+      ## วิเคราะห์:
+      1. สาเหตุที่แท้จริงที่ถูก deny คืออะไร
+      2. ICD-10 code ที่ถูกต้องควรเป็นอะไร (ถ้าเป็น coding error)
+      3. เอกสารที่ขาดคืออะไร (ถ้าเป็น document issue)
+      4. มีกรณีใกล้เคียงที่ appeal สำเร็จไหม
+      5. โอกาส recovery กี่ % (0-100)
+      6. แนะนำ action: auto_fix / appeal / escalate / write_off
+      7. ถ้า appeal: เหตุผลหลักที่ใช้อุทธรณ์
+
+      ตอบเป็น JSON format
+
+    output:
+      root_cause: string
+      correct_icd10: string | null
+      missing_documents: string[]
+      similar_cases_found: number
+      recovery_chance: float        # 0.0 - 1.0
+      recommended_action: enum[auto_fix, appeal, escalate, write_off]
+      appeal_argument: string | null
+      confidence: float             # 0.0 - 1.0
+
+  # ----- STEP 4: DECIDE -----
+  - step: decide
+    description: ตัดสินใจว่าจะทำอะไรกับ claim นี้
+    logic:
+      rules:
+        - if: "action == 'auto_fix' AND confidence > 0.85"
+          then: proceed_to_fix
+          human_review: false  # ส่งเลย (แจ้ง LINE เฉยๆ)
+
+        - if: "action == 'auto_fix' AND confidence 0.60-0.85"
+          then: proceed_to_fix
+          human_review: true   # ต้องรออนุมัติ
+
+        - if: "action == 'appeal'"
+          then: proceed_to_appeal
+          human_review: true   # ต้องรออนุมัติเสมอ
+
+        - if: "action == 'escalate'"
+          then: send_to_specialist
+          human_review: true
+          specialist: physician  # ส่งให้แพทย์ตรวจ
+
+        - if: "action == 'write_off'"
+          then: log_and_close
+          human_review: false
+          track_pattern: true  # เก็บ pattern ไว้ป้องกันครั้งหน้า
+
+  # ----- STEP 5: ACT -----
+  - step: act
+    description: ดำเนินการตาม decision
+    skills:
+      - icd-coding
+      - claim-validator
+      - appeal-drafter
+
+    actions:
+      auto_fix:
+        - apply_correct_icd10
+        - recalculate_drg
+        - validate_all_fields     # ใช้ claim-validator skill
+        - prepare_resubmission
+
+      appeal:
+        - draft_appeal_letter     # ใช้ appeal-drafter skill
+        - attach_supporting_docs
+        - prepare_appeal_package
+
+      escalate:
+        - create_escalation_ticket
+        - attach_claim_analysis
+        - notify_specialist
+
+  # ----- STEP 6: HUMAN REVIEW -----
+  - step: human_review
+    description: ส่งให้คนตรวจก่อนส่ง
+    channels:
+      - line_notify:
+          template: |
+            === Denial Fighter ===
+            Claim: {claim_id}
+            ผู้ป่วย: {patient_hn}
+            มูลค่า: {charge_amount} บาท
+            สาเหตุ: {deny_reason_text}
+            AI แนะนำ: {recommended_action}
+            Confidence: {confidence}%
+
+            [อนุมัติ] [แก้ไข] [ปฏิเสธ]
+
+      - web_dashboard:
+          show: full_analysis_with_comparison
+
+    timeout: 48_hours  # ถ้าไม่ตอบภายใน 48 ชม. = auto-escalate
+
+    responses:
+      approve: proceed_to_resubmit
+      modify: return_to_step_5_with_edits
+      reject: log_reason_and_close
+
+  # ----- STEP 7: RESUBMIT + TRACK -----
+  - step: resubmit_and_track
+    description: ส่ง resubmit และติดตามผล
+    tools:
+      - eclaim-api
+      - line-notify
+
+    actions:
+      resubmit:
+        - submit_via_eclaim_api
+        - log_submission_id
+        - notify_team: "ส่ง resubmit แล้ว รอผล"
+
+      track:
+        schedule: daily_check
+        on_approved:
+          - update_status: recovered
+          - calculate_revenue_saved
+          - notify_team: "ได้เงินคืน {amount} บาท"
+          - save_to_training_data   # feedback loop
+
+        on_denied_again:
+          - increment_attempt_count
+          - if_attempts_lt_3: return_to_step_2
+          - if_attempts_gte_3: write_off_with_report
+
+# =============================================================
+# LEARNING & IMPROVEMENT
+# =============================================================
+feedback_loop:
+  description: >
+    ทุกครั้งที่ได้ผลลัพธ์ (สำเร็จหรือล้มเหลว)
+    เก็บเป็น training data เพื่อให้ AI เก่งขึ้นเรื่อยๆ
+
+  on_success:
+    - save_case_to: references/hospital-data/successful-appeals.md
+    - update: deny-codes.md (เพิ่ม success pattern)
+    - if_appeal: save_template_to references/nhso-rules/appeal-templates/
+
+  on_failure:
+    - save_case_to: references/hospital-data/failed-appeals.md
+    - analyze_why_failed
+    - update_confidence_model
+
+# =============================================================
+# KPIs (ตัวชี้วัดความสำเร็จ)
+# =============================================================
+kpis:
+  - name: recovery_rate
+    description: เปอร์เซ็นต์ที่ appeal/fix แล้วได้เงินคืน
+    target: "> 60%"
+    measure: recovered_claims / total_denied_claims
+
+  - name: revenue_recovered
+    description: มูลค่าเงินที่กู้คืนมาได้ต่อเดือน
+    target: "> 200,000 บาท/เดือน (สำหรับ รพ.กลาง)"
+
+  - name: turnaround_time
+    description: เวลาเฉลี่ยตั้งแต่ deny จนได้เงินคืน
+    target: "< 14 วัน"
+
+  - name: auto_fix_rate
+    description: เปอร์เซ็นต์ที่ fix อัตโนมัติโดยไม่ต้องพึ่งคน
+    target: "> 40% ของ denied claims ทั้งหมด"
+
+  - name: accuracy
+    description: AI วิเคราะห์สาเหตุถูกต้องกี่ %
+    target: "> 85%"
+    measure: correct_analysis / total_analyzed
