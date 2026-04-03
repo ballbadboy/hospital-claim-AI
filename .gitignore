@@ -35,3 +35,4 @@ dashboard/node_modules/
 credentials.json
 *.pem
 *.key
+.mcp.json

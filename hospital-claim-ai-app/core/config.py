@@ -15,6 +15,11 @@ class Settings(BaseSettings):
     anthropic_model: str = "claude-sonnet-4-20250514"
     anthropic_max_tokens: int = 4096
 
+    # AI provider: "anthropic" (default) หรือ "ollama" (local, ไม่ต้อง API key)
+    ai_provider: str = "anthropic"
+    ollama_base_url: str = "http://localhost:11434"
+    ollama_model: str = "llama3.1:70b"
+
     database_url: str = "postgresql+asyncpg://localhost:5432/hospital_claim_ai"
 
     line_channel_token: str = ""

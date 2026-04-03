@@ -28,6 +28,34 @@ def _get_client() -> anthropic.AsyncAnthropic:
     return _client
 
 
+async def _call_llm(system: str, user: str, max_tokens: int) -> str:
+    """Unified LLM call — Anthropic หรือ Ollama ตาม ai_provider ใน .env"""
+    settings = get_settings()
+
+    if settings.ai_provider == "ollama":
+        import litellm
+        resp = await litellm.acompletion(
+            model=f"ollama/{settings.ollama_model}",
+            api_base=settings.ollama_base_url,
+            messages=[
+                {"role": "system", "content": system},
+                {"role": "user", "content": user},
+            ],
+            max_tokens=max_tokens,
+        )
+        return resp.choices[0].message.content or ""
+
+    # default: Anthropic
+    client = _get_client()
+    msg = await client.messages.create(
+        model=settings.anthropic_model,
+        max_tokens=max_tokens,
+        system=system,
+        messages=[{"role": "user", "content": user}],
+    )
+    return msg.content[0].text if msg.content else ""
+
+
 @lru_cache(maxsize=16)
 def load_knowledge(department: Department) -> str:
     """Load relevant knowledge files for the department (cached)."""
@@ -121,30 +149,24 @@ async def analyze_claim(
     prompt = build_prompt(claim, department, rule_results)
 
     try:
-        client = _get_client()
-        message = await client.messages.create(
-            model=settings.anthropic_model,
-            max_tokens=settings.anthropic_max_tokens,
+        response_text = await _call_llm(
             system=f"You are a Thai hospital claim validation AI. Use this knowledge base:\n{knowledge}",
-            messages=[{"role": "user", "content": prompt}]
+            user=prompt,
+            max_tokens=settings.anthropic_max_tokens,
         )
     except RateLimitError:
-        logger.warning("Anthropic API rate limited — skipping AI analysis")
+        logger.warning("API rate limited — skipping AI analysis")
         return {"raw_analysis": "AI analysis unavailable: rate limited"}
-    except (APIError, APITimeoutError) as e:
-        logger.error("Anthropic API error: %s", e)
-        return {"raw_analysis": "AI analysis unavailable: API error"}
+    except (APIError, APITimeoutError, Exception) as e:
+        logger.error("LLM error: %s", e)
+        return {"raw_analysis": f"AI analysis unavailable: {e}"}
 
-    response_text = message.content[0].text if message.content else ""
-
-    return {
-        "raw_analysis": response_text,
-        "model": settings.anthropic_model,
-        "usage": {
-            "input_tokens": message.usage.input_tokens,
-            "output_tokens": message.usage.output_tokens,
-        }
-    }
+    model_used = (
+        f"ollama/{settings.ollama_model}"
+        if settings.ai_provider == "ollama"
+        else settings.anthropic_model
+    )
+    return {"raw_analysis": response_text, "model": model_used}
 
 
 async def generate_appeal(
@@ -161,12 +183,9 @@ async def generate_appeal(
     knowledge = load_knowledge(department)
 
     try:
-        client = _get_client()
-        message = await client.messages.create(
-            model=settings.anthropic_model,
-            max_tokens=settings.anthropic_max_tokens,
+        return await _call_llm(
             system=f"You are an expert in Thai hospital claim appeals. Knowledge:\n{knowledge}",
-            messages=[{"role": "user", "content": f"""ร่างหนังสืออุทธรณ์สำหรับเคสนี้:
+            user=f"""ร่างหนังสืออุทธรณ์สำหรับเคสนี้:
 - HN: {claim_data.get('hn')}
 - AN: {claim_data.get('an')}
 - Diagnosis: {claim_data.get('principal_dx')}
@@ -174,13 +193,12 @@ async def generate_appeal(
 - Deny reason: {deny_reason}
 - Department: {department.value}
 
-ใช้ format อุทธรณ์มาตรฐาน ระบุเหตุผลทางคลินิกที่สนับสนุน พร้อมอ้างอิง guidelines"""}]
+ใช้ format อุทธรณ์มาตรฐาน ระบุเหตุผลทางคลินิกที่สนับสนุน พร้อมอ้างอิง guidelines""",
+            max_tokens=settings.anthropic_max_tokens,
         )
     except RateLimitError:
-        logger.warning("Anthropic API rate limited — appeal generation failed")
+        logger.warning("API rate limited — appeal generation failed")
         return "Appeal generation failed: rate limited. Please try again later."
-    except (APIError, APITimeoutError) as e:
-        logger.error("Anthropic API error during appeal: %s", e)
+    except (APIError, APITimeoutError, Exception) as e:
+        logger.error("LLM error during appeal: %s", e)
         return "Appeal generation failed: API error. Please try again later."
-
-    return message.content[0].text if message.content else ""
