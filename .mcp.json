@@ -1,5 +1,12 @@
 {
   "mcpServers": {
+    "openspace": {
+      "command": "openspace-mcp",
+      "toolTimeout": 600,
+      "env": {
+        "OPENSPACE_WORKSPACE": "/Users/ballbadboy/OpenSpace"
+      }
+    },
     "hospital-db": {
       "command": "npx",
       "args": ["-y", "@anthropic-ai/mcp-server-postgres", "postgresql://user:pass@localhost:5432/hospital_claim_ai"],

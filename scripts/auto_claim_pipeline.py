@@ -107,12 +107,29 @@ INST_LIMITS = {
     "4305D": ("DES ไม่มี polymer", 1),
     "4306": ("Stent Graft", 2),
     "4307": ("Rota Burr", 2),
-    "4310": ("Thrombectomy", 1),
+    "4308": ("Rota Burr Advancer", 1),
+    "4309": ("Cutting/Scoring Balloon", 2),
+    "4310": ("Thrombectomy Catheter", 1),
     "4313": ("IVUS", 1),
     "4314": ("FFR Wire", 1),
+    "4319": ("CTO PTCA Guide Wire", 3),
+    "4320": ("Rotablator Guide Wire", 1),
+    "4321": ("CTO PTCA Balloon", 1),
     "4401": ("Diag Catheter", 3),
+    "4407": ("Diag Angiography Catheter", 3),
     "4701": ("Sheath", 3),
     "4702": ("Closure Device", 4),
+}
+
+# Device-Procedure Matching — อุปกรณ์ต้องมี procedure code คู่กัน ไม่งั้น deny
+# แจ้งจาก สปสช. มี.ค. 2569: device 4307-4310, 4320 ต้องมี 17.55
+DEVICE_PROC_MATCH = {
+    "4307": {"name": "Rota Burr", "require_proc": "17.55", "proc_name": "Transluminal coronary atherectomy"},
+    "4308": {"name": "Rota Burr Advancer", "require_proc": "17.55", "proc_name": "Transluminal coronary atherectomy"},
+    "4309": {"name": "Cutting/Scoring Balloon", "require_proc": "17.55", "proc_name": "Transluminal coronary atherectomy"},
+    "4310": {"name": "Thrombectomy Catheter", "require_proc": "17.55", "proc_name": "Transluminal coronary atherectomy"},
+    "4320": {"name": "Rotablator Guide Wire", "require_proc": "17.55", "proc_name": "Transluminal coronary atherectomy"},
+    "4306": {"name": "Stent Graft", "require_proc": "36.06", "proc_name": "Insertion of coronary stent"},
 }
 
 # CC/MCC ที่เพิ่ม RW (จาก cath-lab.md Checkpoint 6)
@@ -207,6 +224,44 @@ def smart_analyze(claim):
                 "ตรวจจำนวนอุปกรณ์: DES อัลลอยด์ ≤3 ชุด, DES สแตนเลส ≤1 ชุด, "
                 "Guiding ≤2, Wire ≤3, Balloon ≤5 ต่อครั้ง (ปีงบ69 ข้อ 5.2.1)"
             )
+
+            # ตรวจ Device-Procedure Matching (17.55 rule — แจ้งจาก สปสช. มี.ค. 69)
+            proc_codes = claim.get("proc_codes", [])
+            device_codes = claim.get("device_codes", [])
+            for dev_code, rule in DEVICE_PROC_MATCH.items():
+                if dev_code in device_codes:
+                    req = rule["require_proc"]
+                    if req not in proc_codes:
+                        warnings.append(
+                            f"CRITICAL: ใช้อุปกรณ์ {dev_code} ({rule['name']}) "
+                            f"แต่ไม่มีรหัสหัตถการ {req} ({rule['proc_name']}) → "
+                            f"ถูก deny แน่นอน! ต้องเพิ่ม {req} ใน OPR file"
+                        )
+                        appeal_points.append(
+                            f"อุปกรณ์ {rule['name']} (รหัส {dev_code}) ที่ใช้ในหัตถการ "
+                            f"ได้ดำเนินการเพิ่มรหัส {req} ({rule['proc_name']}) "
+                            f"ใน OPR file แล้ว ตามข้อกำหนด ICD-9-CM 2015 สำหรับ DRG v6"
+                        )
+
+            # ตรวจข้อมูลก่อน 17/3/69 ต้องส่งใหม่ (Thrombuster)
+            if "4310" in device_codes:
+                try:
+                    admit_chk = admit_str or claim.get("admit_date", "")
+                    if "/" in admit_chk:
+                        parts = admit_chk.split("/")
+                        d, m, y = int(parts[0]), int(parts[1]), int(parts[2])
+                        if y > 2500:
+                            y -= 543
+                        from datetime import date as _date
+                        admit_dt = _date(y, m, d)
+                        cutoff = _date(2026, 3, 17)  # 17/3/2569
+                        if admit_dt < cutoff:
+                            warnings.append(
+                                "CRITICAL: เคสนี้ใช้ Thrombectomy (4310) + admit ก่อน 17/3/69 "
+                                "→ ต้องส่งข้อมูลใหม่ (แจ้งจาก สปสช. มี.ค. 69)"
+                            )
+                except Exception:
+                    pass
 
         elif code == "IP01":
             if is_refer:

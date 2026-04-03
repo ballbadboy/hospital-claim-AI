@@ -82,6 +82,46 @@
 > อ้างอิง: ร่างประกาศ สปสช. เรื่องการแก้ไขหลักเกณฑ์จ่ายค่าอุปกรณ์ ปีงบ 69 (ข้อ 5.2.1)
 > ดูรายละเอียดเต็มที่ `references/nhso-rules/inst-payment-reform-fy69.md`
 
+#### ICD-9-CM 17.55 — Transluminal Coronary Atherectomy (รหัสใหม่ DRG v6)
+
+**ข้อกำหนดสำคัญจาก สปสช. (แจ้ง มี.ค. 2569):**
+- **Device 4310 (Thrombectomy Catheter) ต้องมีรหัส 17.55** ถึงจะเบิกได้
+- **ข้อมูลที่ส่งก่อน 17/3/2569 ต้องส่งใหม่** — ติดการเบิก Thrombuster
+- ใช้กับ DRG v6 เป็นต้นไป
+
+**ICD-9-CM 17.55 ครอบคลุม:**
+- Rotational atherectomy [ROTA, RA]
+- Cutting balloon angioplasty [CBA]
+- Laser coronary angioplasty [LCA]
+- Excimer laser angioplasty [ELCA]
+- Directional coronary atherectomy [DCA]
+- Rheolytic thrombectomy
+
+**Code also any:**
+- injection or infusion of thrombolytic agent (99.10)
+- insertion of coronary artery stent (36.06-36.07)
+- intracoronary artery thrombolytic infusion (36.04)
+- number of vascular stents inserted (00.45-00.48)
+- number of vessels treated (00.40-00.43)
+- procedure on vessel bifurcation (00.44)
+- Super Saturated oxygen therapy (00.49)
+- transluminal coronary angioplasty (00.66)
+
+**Device-Procedure Matching (ต้อง match ถึงจะเบิกได้):**
+
+| รหัสอุปกรณ์ | ชื่อ | ราคา(บาท) | ต้องมี ICD-9-CM | หมายเหตุ |
+|-------------|------|-----------|----------------|---------|
+| 4306 | Coronary Stent Graft | 75,000 | 36.06-36.07 | — |
+| 4307 | Rotational Atherectomy Burr | 28,000 | **17.55** | — |
+| 4308 | Rota Burr Advancer | 29,000 | **17.55** | ใช้คู่กับ 4307 + 00.66 PTCA |
+| 4309 | Cutting/Scoring Balloon | 22,000 | **17.55** | Renal artery ก็ใช้ได้ |
+| 4310 | **Thrombectomy Catheter** | **12,000** | **17.55** | **ถ้าไม่มี 17.55 → deny** |
+| 4320 | Rotablator Guide Wire | 9,000 | **17.55** | ใช้คู่กับ 4307+4308 |
+| 4321 | CTO PTCA Balloon | 8,000 | 00.66 | เส้นผ่าศูนย์กลาง ≤1.25mm |
+
+> **CRITICAL:** ถ้าใช้ device 4307/4308/4309/4310/4320 แล้วไม่ code 17.55 → **ถูก deny แน่นอน**
+> สปสช. ตรวจ auto matching ระหว่าง ADP file กับ OPR file
+
 ### Checkpoint 4: 16-File Completeness (FDH)
 **ตรวจว่าข้อมูล 16 แฟ้มครบ**
 

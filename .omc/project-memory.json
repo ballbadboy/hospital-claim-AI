@@ -1,0 +1,328 @@
+{
+  "version": "1.0.0",
+  "lastScanned": 1775186917302,
+  "projectRoot": "/Users/ballbadboy/Desktop/projectX/Hospital claim AI",
+  "techStack": {
+    "languages": [
+      {
+        "name": "Python",
+        "version": null,
+        "confidence": "high",
+        "markers": [
+          "pyproject.toml",
+          "requirements.txt"
+        ]
+      }
+    ],
+    "frameworks": [],
+    "packageManager": "pip",
+    "runtime": null
+  },
+  "build": {
+    "buildCommand": null,
+    "testCommand": "pytest",
+    "lintCommand": "ruff check",
+    "devCommand": null,
+    "scripts": {}
+  },
+  "conventions": {
+    "namingStyle": null,
+    "importStyle": null,
+    "testPattern": null,
+    "fileOrganization": null
+  },
+  "structure": {
+    "isMonorepo": false,
+    "workspaces": [],
+    "mainDirectories": [
+      "docs",
+      "scripts",
+      "tests"
+    ],
+    "gitBranches": {
+      "defaultBranch": "main",
+      "branchingStrategy": null
+    }
+  },
+  "customNotes": [],
+  "directoryMap": {
+    "agents": {
+      "path": "agents",
+      "purpose": null,
+      "fileCount": 2,
+      "lastAccessed": 1775186917261,
+      "keyFiles": [
+        "cathlab-auto-checker.yml",
+        "denial-fighter.yml"
+      ]
+    },
+    "alembic": {
+      "path": "alembic",
+      "purpose": null,
+      "fileCount": 3,
+      "lastAccessed": 1775186917266,
+      "keyFiles": [
+        "README",
+        "env.py",
+        "script.py.mako"
+      ]
+    },
+    "api": {
+      "path": "api",
+      "purpose": "API routes",
+      "fileCount": 7,
+      "lastAccessed": 1775186917267,
+      "keyFiles": [
+        "__init__.py",
+        "dependencies.py",
+        "main.py",
+        "routes.py",
+        "routes_cathlab.py"
+      ]
+    },
+    "claim_reports": {
+      "path": "claim_reports",
+      "purpose": null,
+      "fileCount": 20,
+      "lastAccessed": 1775186917268,
+      "keyFiles": [
+        "Appeal_69-03557.docx",
+        "Appeal_69-03558.docx",
+        "Appeal_69-03559.docx",
+        "Appeal_69-03560.docx",
+        "Appeal_69-03561.docx"
+      ]
+    },
+    "claim_reports_100": {
+      "path": "claim_reports_100",
+      "purpose": null,
+      "fileCount": 136,
+      "lastAccessed": 1775186917269,
+      "keyFiles": [
+        "Appeal_69-40001.docx",
+        "Appeal_69-40002.docx",
+        "Appeal_69-40004.docx",
+        "Appeal_69-40007.docx",
+        "Appeal_69-40008.docx"
+      ]
+    },
+    "claim_reports_100_v2": {
+      "path": "claim_reports_100_v2",
+      "purpose": null,
+      "fileCount": 136,
+      "lastAccessed": 1775186917270,
+      "keyFiles": [
+        "Appeal_69-40001.docx",
+        "Appeal_69-40002.docx",
+        "Appeal_69-40004.docx",
+        "Appeal_69-40007.docx",
+        "Appeal_69-40008.docx"
+      ]
+    },
+    "claim_reports_v3": {
+      "path": "claim_reports_v3",
+      "purpose": null,
+      "fileCount": 136,
+      "lastAccessed": 1775186917271,
+      "keyFiles": [
+        "Appeal_69-40001.docx",
+        "Appeal_69-40002.docx",
+        "Appeal_69-40004.docx",
+        "Appeal_69-40007.docx",
+        "Appeal_69-40008.docx"
+      ]
+    },
+    "core": {
+      "path": "core",
+      "purpose": null,
+      "fileCount": 18,
+      "lastAccessed": 1775186917271,
+      "keyFiles": [
+        "__init__.py",
+        "ai_engine.py",
+        "batch_optimizer.py",
+        "cathlab_models.py",
+        "cathlab_validator.py"
+      ]
+    },
+    "dashboard": {
+      "path": "dashboard",
+      "purpose": null,
+      "fileCount": 10,
+      "lastAccessed": 1775186917272,
+      "keyFiles": [
+        "README.md",
+        "eslint.config.js",
+        "index.html",
+        "package-lock.json",
+        "package.json"
+      ]
+    },
+    "docs": {
+      "path": "docs",
+      "purpose": "Documentation",
+      "fileCount": 6,
+      "lastAccessed": 1775186917272,
+      "keyFiles": [
+        "CathLab_Report_AN69-03556.docx",
+        "SETUP-GUIDE.md",
+        "appeal_AN69-03556.docx",
+        "cathlab-ai-claim-manual.md",
+        "cathlab-claim-workflow.md"
+      ]
+    },
+    "hospital-claim-ai-app": {
+      "path": "hospital-claim-ai-app",
+      "purpose": null,
+      "fileCount": 13,
+      "lastAccessed": 1775186917272,
+      "keyFiles": [
+        "CLAUDE.md",
+        "Dockerfile",
+        "README.md",
+        "alembic.ini",
+        "docker-compose.yml"
+      ]
+    },
+    "knowledge": {
+      "path": "knowledge",
+      "purpose": null,
+      "fileCount": 11,
+      "lastAccessed": 1775186917273,
+      "keyFiles": [
+        "cath-lab.md",
+        "chemo.md",
+        "core-rules.md",
+        "deny-fixes.md",
+        "dialysis.md"
+      ]
+    },
+    "modules": {
+      "path": "modules",
+      "purpose": null,
+      "fileCount": 1,
+      "lastAccessed": 1775186917273,
+      "keyFiles": [
+        "__init__.py"
+      ]
+    },
+    "references": {
+      "path": "references",
+      "purpose": null,
+      "fileCount": 0,
+      "lastAccessed": 1775186917273,
+      "keyFiles": []
+    },
+    "scripts": {
+      "path": "scripts",
+      "purpose": "Build/utility scripts",
+      "fileCount": 9,
+      "lastAccessed": 1775186917274,
+      "keyFiles": [
+        "auto_claim_pipeline.py",
+        "cag_form_parser.py",
+        "create_admin.py",
+        "docx_generators.py",
+        "generate_appeal.py"
+      ]
+    },
+    "skills": {
+      "path": "skills",
+      "purpose": null,
+      "fileCount": 0,
+      "lastAccessed": 1775186917274,
+      "keyFiles": []
+    },
+    "tests": {
+      "path": "tests",
+      "purpose": "Test files",
+      "fileCount": 9,
+      "lastAccessed": 1775186917275,
+      "keyFiles": [
+        "__init__.py",
+        "test_auth.py",
+        "test_cathlab.py",
+        "test_his_connector.py",
+        "test_models.py"
+      ]
+    },
+    "v993_reports": {
+      "path": "v993_reports",
+      "purpose": null,
+      "fileCount": 5,
+      "lastAccessed": 1775186917275,
+      "keyFiles": [
+        "V993_Appeal_4181_HIGH_SYNTAX.docx",
+        "V993_Appeal_4551_STENOSIS_BORDERLINE.docx",
+        "V993_Appeal_7731_MULTIVESSEL_SHOCK.docx",
+        "V993_Appeal_9197_STENOSIS_BORDERLINE.docx",
+        "V993_Summary_Report.docx"
+      ]
+    },
+    "dashboard/public": {
+      "path": "dashboard/public",
+      "purpose": "Public files",
+      "fileCount": 1,
+      "lastAccessed": 1775186917279,
+      "keyFiles": [
+        "favicon.svg"
+      ]
+    },
+    "dashboard/src": {
+      "path": "dashboard/src",
+      "purpose": "Source code",
+      "fileCount": 3,
+      "lastAccessed": 1775186917280,
+      "keyFiles": [
+        "App.tsx",
+        "index.css",
+        "main.tsx"
+      ]
+    }
+  },
+  "hotPaths": [
+    {
+      "path": "scripts/v993_checker.py",
+      "accessCount": 15,
+      "lastAccessed": 1775188325607,
+      "type": "file"
+    },
+    {
+      "path": "scripts/auto_claim_pipeline.py",
+      "accessCount": 13,
+      "lastAccessed": 1775188159228,
+      "type": "file"
+    },
+    {
+      "path": "hospital-claim-ai-app/knowledge/cath-lab.md",
+      "accessCount": 3,
+      "lastAccessed": 1775187535662,
+      "type": "file"
+    },
+    {
+      "path": "hospital-claim-ai-app/knowledge/cag-data-form.md",
+      "accessCount": 1,
+      "lastAccessed": 1775022282220,
+      "type": "file"
+    },
+    {
+      "path": "scripts/cag_form_parser.py",
+      "accessCount": 1,
+      "lastAccessed": 1775022793646,
+      "type": "file"
+    },
+    {
+      "path": "scripts/docx_generators.py",
+      "accessCount": 1,
+      "lastAccessed": 1775188765394,
+      "type": "file"
+    },
+    {
+      "path": ".mcp.json",
+      "accessCount": 1,
+      "lastAccessed": 1775193746336,
+      "type": "file"
+    }
+  ],
+  "userDirectives": []
+}
