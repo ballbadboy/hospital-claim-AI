@@ -1,3 +1,4 @@
+import asyncio
 import logging
 
 import pandas as pd
@@ -80,7 +81,7 @@ async def check_csv_upload(
     if len(content) > MAX_CSV_SIZE:
         raise HTTPException(413, f"File too large. Maximum {MAX_CSV_SIZE // 1024 // 1024} MB")
 
-    df = pd.read_csv(io.BytesIO(content))
+    df = await asyncio.to_thread(pd.read_csv, io.BytesIO(content))
 
     required_cols = {"HN", "PDx"}
     missing = required_cols - set(df.columns)
