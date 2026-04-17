@@ -70,7 +70,6 @@ def build_prompt(claim: ClaimInput, department: Department, rule_results: list) 
 Analyze this case and provide additional clinical validation beyond the deterministic rule checks already performed.
 
 ## Case Data
-- HN: {claim.hn}
 - Principal Diagnosis: {claim.principal_dx}
 - Secondary Diagnoses: {', '.join(claim.secondary_dx) or 'None'}
 - Procedures: {', '.join(claim.procedures) or 'None'}
@@ -135,7 +134,10 @@ async def analyze_claim(
         logger.error("Anthropic API error: %s", e)
         return {"raw_analysis": "AI analysis unavailable: API error"}
 
-    response_text = message.content[0].text if message.content else ""
+    response_text = next(
+        (block.text for block in message.content if hasattr(block, "text")),
+        "",
+    )
 
     return {
         "raw_analysis": response_text,
@@ -183,4 +185,4 @@ async def generate_appeal(
         logger.error("Anthropic API error during appeal: %s", e)
         return "Appeal generation failed: API error. Please try again later."
 
-    return message.content[0].text if message.content else ""
+    return next((block.text for block in message.content if hasattr(block, "text")), "")

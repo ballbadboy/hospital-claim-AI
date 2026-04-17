@@ -7,8 +7,8 @@ Usage:
     generate_appeal_letter(data, "/path/to/output.docx")
 
 Or CLI:
-    python docx_generators.py report  '{"an":"69-03556",...}' output.docx
-    python docx_generators.py appeal  '{"an":"69-03556",...}' output.docx
+    python docx_generators.py report  '{"an":"[REDACTED-AN]",...}' output.docx
+    python docx_generators.py appeal  '{"an":"[REDACTED-AN]",...}' output.docx
 """
 
 import json, sys

@@ -199,9 +199,9 @@ def generate_report():
     run.font.size = Pt(8)
 
     # Key info on title page
-    add_styled_paragraph(doc, 'AN: 69-03556', font_size=20, bold=True, color=BLACK,
+    add_styled_paragraph(doc, 'AN: [REDACTED-AN]', font_size=20, bold=True, color=BLACK,
                          alignment=WD_ALIGN_PARAGRAPH.CENTER, space_after=4)
-    add_styled_paragraph(doc, 'HN: 69-09349', font_size=16, color=GRAY,
+    add_styled_paragraph(doc, 'HN: [REDACTED-HN]', font_size=16, color=GRAY,
                          alignment=WD_ALIGN_PARAGRAPH.CENTER, space_after=4)
 
     # Status badge
@@ -232,9 +232,9 @@ def generate_report():
 
     info_rows = [
         ('REP No.', '690300013'),
-        ('HN', '69-09349'),
-        ('AN', '69-03556'),
-        ('PID', '2411300021503'),
+        ('HN', '[REDACTED-HN]'),
+        ('AN', '[REDACTED-AN]'),
+        ('PID', '[REDACTED-CID]'),
         ('\u0e2a\u0e34\u0e17\u0e18\u0e34\u0e4c', 'UC (UCS)'),
         ('\u0e27\u0e31\u0e19\u0e40\u0e02\u0e49\u0e32\u0e23\u0e31\u0e01\u0e29\u0e32 (Admit)', '27/02/2569 \u0e40\u0e27\u0e25\u0e32 11:44'),
         ('\u0e27\u0e31\u0e19\u0e08\u0e33\u0e2b\u0e19\u0e48\u0e32\u0e22 (Discharge)', '01/03/2569 \u0e40\u0e27\u0e25\u0e32 13:00'),
@@ -763,7 +763,7 @@ def generate_report():
     run._element.rPr.rFonts.set(qn('w:eastAsia'), 'TH Sarabun New')
 
     # === SAVE ===
-    output_path = '/Users/ballbadboy/Desktop/projectX/Hospital claim AI/CathLab_Deny_Report_AN69-03556.docx'
+    output_path = '/Users/ballbadboy/Desktop/projectX/Hospital claim AI/CathLab_Deny_Report_AN[REDACTED-AN].docx'
     doc.save(output_path)
     print(f'Report saved to: {output_path}')
     return output_path

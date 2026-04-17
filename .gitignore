@@ -36,3 +36,14 @@ credentials.json
 *.pem
 *.key
 .mcp.json
+
+# NHSO RAG — rebuildable local stores
+knowledge/nhso-rag/faiss_store/
+knowledge/nhso-rag/textbook_store/
+knowledge/nhso-rag/__pycache__/
+knowledge/nhso-rag/index_store/
+
+# .omc session logs (not useful for other devs)
+.omc/sessions/
+.omc/state/checkpoints/
+.claude/scheduled_tasks.lock

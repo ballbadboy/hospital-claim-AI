@@ -28,9 +28,7 @@ export default function ReportsPage() {
     try {
       const formData = new FormData()
       formData.append('file', file)
-      const response = await api.post('/check/csv', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      })
+      const response = await api.post('/check/csv', formData)
       setUploadResult(response.data)
     } catch (err: any) {
       setUploadResult({ error: err.response?.data?.detail || 'Upload failed' })

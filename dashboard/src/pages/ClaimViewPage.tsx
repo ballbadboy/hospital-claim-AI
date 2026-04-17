@@ -8,15 +8,20 @@ export default function ClaimViewPage() {
 
   if (isLoading) return <div className="text-center py-12 text-gray-500">กำลังโหลด...</div>
   if (error) return <div className="text-center py-12 text-red-500">ไม่พบเคส {an}</div>
+  if (!data) return null
 
   const downloadAudit = async () => {
-    const response = await api.get(`/reports/audit/${an}`, { responseType: 'blob' })
-    const url = window.URL.createObjectURL(new Blob([response.data]))
-    const link = document.createElement('a')
-    link.href = url
-    link.download = `audit_trail_${an}.xlsx`
-    link.click()
-    window.URL.revokeObjectURL(url)
+    try {
+      const response = await api.get(`/reports/audit/${an}`, { responseType: 'blob' })
+      const url = window.URL.createObjectURL(new Blob([response.data]))
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `audit_trail_${an}.xlsx`
+      link.click()
+      window.URL.revokeObjectURL(url)
+    } catch {
+      alert('ไม่สามารถดาวน์โหลดได้ กรุณาลองใหม่')
+    }
   }
 
   return (
@@ -57,9 +62,6 @@ export default function ClaimViewPage() {
                 <div key={i} className="border-l-2 border-blue-200 pl-4 py-1">
                   <p className="font-medium text-sm">{entry.action}</p>
                   <p className="text-xs text-gray-400">{entry.user} — {entry.at ? new Date(entry.at).toLocaleString('th-TH') : ''}</p>
-                  {entry.details && Object.keys(entry.details).length > 0 && (
-                    <p className="text-xs text-gray-500 mt-1">{JSON.stringify(entry.details)}</p>
-                  )}
                 </div>
               ))}
             </div>

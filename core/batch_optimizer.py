@@ -2,7 +2,7 @@
 
 from pydantic import BaseModel, Field
 
-from core.cathlab_models import CathLabClaim, CheckResult, DenyAnalysis
+from core.cathlab_models import CathLabClaim, CathLabCheckResult, DenyAnalysis
 from core.cathlab_validator import validate_cathlab_claim
 from core.deny_analyzer import analyze_deny
 from core.drg_calculator import BASE_RATE_IN_ZONE
@@ -42,7 +42,7 @@ class BatchResult(BaseModel):
 
 def _categorize_claim(
     claim: CathLabClaim,
-    check: CheckResult,
+    check: CathLabCheckResult,
     deny_analysis: DenyAnalysis | None,
 ) -> ClaimSummary:
     """Categorize a single claim into a status bucket and compute optimization potential."""
@@ -129,7 +129,7 @@ def _assign_priorities(summaries: list[ClaimSummary], deny_analyses: dict[str, D
 def _generate_action_plan(
     summaries: list[ClaimSummary],
     deny_analyses: dict[str, DenyAnalysis],
-    check_results: dict[str, CheckResult],
+    check_results: dict[str, CathLabCheckResult],
 ) -> list[str]:
     """Generate prioritized action list in Thai."""
 
@@ -176,7 +176,7 @@ def optimize_batch(claims: list[CathLabClaim]) -> BatchResult:
 
     summaries: list[ClaimSummary] = []
     deny_analyses: dict[str, DenyAnalysis] = {}
-    check_results: dict[str, CheckResult] = {}
+    check_results: dict[str, CathLabCheckResult] = {}
 
     for claim in claims:
         # Step 1: Validate

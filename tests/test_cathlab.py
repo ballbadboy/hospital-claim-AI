@@ -1,6 +1,8 @@
 """Tests for Cath Lab module — using real deny case AN 69-03556."""
 
-from datetime import datetime
+from datetime import datetime, timedelta
+
+_now = datetime.now()
 
 from core.cathlab_models import CathLabClaim, DeviceItem, DrugItem
 from core.cathlab_validator import validate_cathlab_claim
@@ -334,8 +336,8 @@ BATCH_CASE_AT_RISK = CathLabClaim(
     hn="69-08001",
     an="69-04100",
     pid="1234567890121",
-    admit_date=datetime(2026, 3, 10, 9, 0),
-    discharge_date=datetime(2026, 3, 12, 14, 0),
+    admit_date=_now - timedelta(days=5),
+    discharge_date=_now - timedelta(days=3),
     principal_dx="",  # Missing PDx → critical → score drops below 70
     secondary_dx=["I10"],
     procedures=[],  # No procedures → another critical/warning
@@ -348,8 +350,8 @@ BATCH_CASE_OPTIMIZABLE = CathLabClaim(
     hn="69-07522",
     an="69-03800",
     pid="3100501234567",
-    admit_date=datetime(2026, 3, 5, 14, 30),
-    discharge_date=datetime(2026, 3, 7, 10, 0),
+    admit_date=_now - timedelta(days=10),
+    discharge_date=_now - timedelta(days=8),
     principal_dx="I25.1",  # Chronic IHD
     secondary_dx=["E11.9", "I10"],  # E11.9 unspecified → can upgrade to E11.65 (CC)
     procedures=["36.06", "88.56"],  # PCI + angio
@@ -366,8 +368,8 @@ BATCH_CASE_READY = CathLabClaim(
     hn="69-09100",
     an="69-04200",
     pid="1100700123456",
-    admit_date=datetime(2026, 3, 15, 6, 0),
-    discharge_date=datetime(2026, 3, 18, 11, 0),
+    admit_date=_now - timedelta(days=4),
+    discharge_date=_now - timedelta(days=1),
     principal_dx="I21.1",  # STEMI inferior wall
     secondary_dx=["I50.21", "N18.4", "E11.65"],  # MCC: acute systolic HF + CKD4 + CC: DM w hyperglycemia
     procedures=["36.06", "37.22", "88.56"],  # PCI + cath + angio

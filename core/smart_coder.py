@@ -255,6 +255,9 @@ class _ExtractedData:
         self.hba1c_value: float | None = None
         self.bs_value: float | None = None
 
+        # Raw lowercased text for keyword matching
+        self.raw_text: str = ""
+
 
 # ═══════════════════════════════════════════════
 # Step 1: Parse clinical text
@@ -263,6 +266,7 @@ class _ExtractedData:
 def _extract(text: str) -> _ExtractedData:
     """Extract clinical info from Thai/English clinical notes."""
     d = _ExtractedData()
+    d.raw_text = text.lower()
 
     # Diagnosis
     d.is_stemi = bool(DX_STEMI.search(text))
@@ -350,7 +354,7 @@ def _determine_pdx(d: _ExtractedData) -> CodeSuggestion:
     """Determine principal diagnosis based on extracted data."""
 
     # Priority 1: Explicit STEMI or (ST elevation + Troponin high)
-    if d.is_stemi or (d.st_elevation and d.troponin_high is not False) or (d.lbbb and d.troponin_high):
+    if d.is_stemi or (d.st_elevation and d.troponin_high is True) or (d.lbbb and d.troponin_high is True):
         # Determine wall
         if d.wall_anterior:
             return CodeSuggestion(
@@ -538,15 +542,15 @@ def _determine_sdx(d: _ExtractedData) -> list[CodeSuggestion]:
                 clinical_evidence=_dm_evidence(d),
             ))
         else:
-            # Still code E11.65 if we don't have specific info —
-            # it's defensible and better for DRG. Flag for documentation.
+            # No HbA1c or complication evidence — use E11.9 (no CC).
+            # Upgrading to E11.65 requires chart-documented HbA1c >7 or complication.
             sdx.append(CodeSuggestion(
-                code="E11.65",
-                description="Type 2 DM with hyperglycemia",
+                code="E11.9",
+                description="Type 2 DM without complications",
                 type="sdx",
-                cc_mcc="CC",
-                confidence=0.75,
-                reason="DM found; using E11.65 (CC) — verify HbA1c or complication in chart",
+                cc_mcc=None,
+                confidence=0.85,
+                reason="DM found but no HbA1c/complication evidence — use E11.9; upgrade to E11.65 only with chart proof",
                 clinical_evidence=_dm_evidence(d),
             ))
 
@@ -619,17 +623,32 @@ def _determine_sdx(d: _ExtractedData) -> list[CodeSuggestion]:
             clinical_evidence="HT keyword found",
         ))
 
-    # COPD — MCC if acute exacerbation
+    # COPD — MCC only if acute exacerbation explicitly documented
     if d.has_copd:
-        sdx.append(CodeSuggestion(
-            code="J44.1",
-            description="COPD with acute exacerbation",
-            type="sdx",
-            cc_mcc="MCC",
-            confidence=0.70,
-            reason="COPD found; using J44.1 (MCC) — verify acute exacerbation in chart",
-            clinical_evidence="COPD keyword found",
-        ))
+        _copd_exacerbation_keywords = ("exacerbation", "acute", "exac", "กำเริบ", "อาการกำเริบ")
+        has_exacerbation = any(
+            kw in (d.raw_text or "").lower() for kw in _copd_exacerbation_keywords
+        )
+        if has_exacerbation:
+            sdx.append(CodeSuggestion(
+                code="J44.1",
+                description="COPD with acute exacerbation",
+                type="sdx",
+                cc_mcc="MCC",
+                confidence=0.85,
+                reason="COPD with documented acute exacerbation → J44.1 (MCC)",
+                clinical_evidence="COPD + exacerbation keywords found",
+            ))
+        else:
+            sdx.append(CodeSuggestion(
+                code="J44.0",
+                description="COPD with acute lower respiratory infection",
+                type="sdx",
+                cc_mcc="CC",
+                confidence=0.80,
+                reason="COPD without exacerbation evidence — use J44.0 (CC); upgrade to J44.1 only with chart-documented acute exacerbation",
+                clinical_evidence="COPD keyword found, no exacerbation documented",
+            ))
 
     # Dyslipidemia — no CC/MCC impact
     if d.has_dyslipid:

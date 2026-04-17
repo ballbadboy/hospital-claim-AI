@@ -1,4 +1,4 @@
-"""Generate Appeal Letter as DOCX — เคส AN 69-03556"""
+"""Generate Appeal Letter as DOCX — เคส AN [REDACTED-AN]"""
 
 from docx import Document
 from docx.shared import Pt, Cm, RGBColor
@@ -70,9 +70,9 @@ def generate_appeal_docx(output_path: str):
     table.style = "Table Grid"
 
     patient_data = [
-        ("HN", "69-09349"),
-        ("AN", "69-03556"),
-        ("เลขประจำตัวประชาชน", "2411300021503"),
+        ("HN", "[REDACTED-HN]"),
+        ("AN", "[REDACTED-AN]"),
+        ("เลขประจำตัวประชาชน", "[REDACTED-CID]"),
         ("วันที่รับเข้ารักษา", "27 กุมภาพันธ์ 2569 เวลา 11:44 น."),
         ("วันที่จำหน่าย", "1 มีนาคม 2569 เวลา 13:00 น."),
         ("การวินิจฉัยหลัก", "Acute transmural myocardial infarction of anterior wall (I21.0)"),
@@ -214,5 +214,5 @@ def generate_appeal_docx(output_path: str):
 
 if __name__ == "__main__":
     import sys
-    output = sys.argv[1] if len(sys.argv) > 1 else "docs/appeal_AN69-03556.docx"
+    output = sys.argv[1] if len(sys.argv) > 1 else "docs/appeal_AN[REDACTED-AN].docx"
     generate_appeal_docx(output)

@@ -27,6 +27,14 @@ def _style_header_row(ws, row_num: int, col_count: int):
         cell.border = THIN_BORDER
 
 
+def _safe_cell(value) -> str:
+    """Prevent Excel formula injection by escaping values that start with formula chars."""
+    s = str(value) if value is not None else ""
+    if s and s[0] in ("=", "+", "-", "@", "|", "%"):
+        return "\t" + s
+    return s
+
+
 def _auto_width(ws):
     for col in ws.columns:
         max_length = 0
@@ -104,10 +112,10 @@ class ReportEngine:
 
         for entry in trail:
             ws.append([
-                entry.get("action", ""),
-                entry.get("user", ""),
-                str(entry.get("details", {})),
-                str(entry.get("at", "")),
+                _safe_cell(entry.get("action", "")),
+                _safe_cell(entry.get("user", "")),
+                _safe_cell(str(entry.get("details", {}))),
+                _safe_cell(str(entry.get("at", ""))),
             ])
         _auto_width(ws)
 

@@ -29,8 +29,8 @@ export function useLogin() {
     mutationFn: (credentials: { username: string; password: string }) =>
       api.post('/auth/login', credentials).then(r => r.data),
     onSuccess: (data) => {
-      localStorage.setItem('access_token', data.access_token)
-      localStorage.setItem('refresh_token', data.refresh_token)
+      sessionStorage.setItem('access_token', data.access_token)
+      sessionStorage.setItem('refresh_token', data.refresh_token)
     },
   })
 }

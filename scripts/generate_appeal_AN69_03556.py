@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate formal appeal letter DOCX for AN 69-03556 Cath Lab Deny"""
+"""Generate formal appeal letter DOCX for AN [EXAMPLE] Cath Lab Deny"""
 
 from docx import Document
 from docx.shared import Pt, Cm, RGBColor
@@ -145,9 +145,9 @@ def generate_appeal():
 
     pt_data = [
         ('\u0e0a\u0e37\u0e48\u0e2d-\u0e2a\u0e01\u0e38\u0e25', '[\u0e0a\u0e37\u0e48\u0e2d\u0e1c\u0e39\u0e49\u0e1b\u0e48\u0e27\u0e22]'),
-        ('\u0e40\u0e25\u0e02\u0e1b\u0e23\u0e30\u0e08\u0e33\u0e15\u0e31\u0e27\u0e1b\u0e23\u0e30\u0e0a\u0e32\u0e0a\u0e19 (CID)', '2411300021503'),
-        ('HN', '69-09349'),
-        ('AN', '69-03556'),
+        ('\u0e40\u0e25\u0e02\u0e1b\u0e23\u0e30\u0e08\u0e33\u0e15\u0e31\u0e27\u0e1b\u0e23\u0e30\u0e0a\u0e32\u0e0a\u0e19 (CID)', '[REDACTED-CID]'),
+        ('HN', '[REDACTED-HN]'),
+        ('AN', '[REDACTED-AN]'),
         ('\u0e2a\u0e34\u0e17\u0e18\u0e34\u0e4c\u0e01\u0e32\u0e23\u0e23\u0e31\u0e01\u0e29\u0e32', 'UC (\u0e2a\u0e34\u0e17\u0e18\u0e34\u0e4c\u0e2b\u0e25\u0e31\u0e01\u0e1b\u0e23\u0e30\u0e01\u0e31\u0e19\u0e2a\u0e38\u0e02\u0e20\u0e32\u0e1e\u0e16\u0e49\u0e27\u0e19\u0e2b\u0e19\u0e49\u0e32)'),
         ('\u0e27\u0e31\u0e19\u0e17\u0e35\u0e48\u0e23\u0e31\u0e1a\u0e40\u0e02\u0e49\u0e32', '27 \u0e01\u0e38\u0e21\u0e20\u0e32\u0e1e\u0e31\u0e19\u0e18\u0e4c 2569 \u0e40\u0e27\u0e25\u0e32 11:44 \u0e19.'),
         ('\u0e27\u0e31\u0e19\u0e17\u0e35\u0e48\u0e08\u0e33\u0e2b\u0e19\u0e48\u0e32\u0e22', '1 \u0e21\u0e35\u0e19\u0e32\u0e04\u0e21 2569 \u0e40\u0e27\u0e25\u0e32 13:00 \u0e19.'),
@@ -417,7 +417,7 @@ def generate_appeal():
     # ==================================================================
     # SAVE
     # ==================================================================
-    output_path = '/Users/ballbadboy/Desktop/projectX/Hospital claim AI/Appeal_AN69-03556.docx'
+    output_path = '/Users/ballbadboy/Desktop/projectX/Hospital claim AI/Appeal_AN[REDACTED-AN].docx'
     doc.save(output_path)
     print(f'Appeal letter saved to: {output_path}')
     return output_path

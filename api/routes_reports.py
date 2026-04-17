@@ -1,6 +1,7 @@
 """Report generation and Excel download endpoints."""
 
 import logging
+import re
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -133,10 +134,11 @@ async def audit_trail_report(
         for a in trail
     ]
     excel_bytes = ReportEngine.generate_audit_trail(trail_data, an=an)
-    filename = f"audit_trail_{an}.xlsx"
+    safe_an = re.sub(r"[^\w\-]", "_", an)
+    filename = f"audit_trail_{safe_an}.xlsx"
 
     return StreamingResponse(
         io.BytesIO(excel_bytes),
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        headers={"Content-Disposition": f"attachment; filename={filename}"},
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )

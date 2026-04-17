@@ -4,19 +4,38 @@
       "command": "openspace-mcp",
       "toolTimeout": 600,
       "env": {
-        "OPENSPACE_WORKSPACE": "/Users/ballbadboy/OpenSpace"
+        "OPENSPACE_WORKSPACE": "/Users/ballbadboy/Desktop/projectX/Hospital claim AI",
+        "OPENSPACE_MODEL": "openrouter/qwen/qwen3.6-plus:free",
+        "OPENSPACE_LLM_API_KEY": "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",
+        "OPENROUTER_API_KEY": "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",
+        "OPENSPACE_HOST_SKILL_DIRS": "/Users/ballbadboy/.claude/skills/cathlab-claim-checker,/Users/ballbadboy/.claude/skills/icd-coding,/Users/ballbadboy/.claude/skills/smart-coder,/Users/ballbadboy/.claude/skills/claim-validator,/Users/ballbadboy/.claude/skills/deny-analyzer,/Users/ballbadboy/.claude/skills/appeal-drafter"
       }
     },
     "hospital-db": {
       "command": "npx",
-      "args": ["-y", "@anthropic-ai/mcp-server-postgres", "postgresql://user:pass@localhost:5432/hospital_claim_ai"],
+      "args": [
+        "-y",
+        "@anthropic-ai/mcp-server-postgres",
+        "postgresql://user:pass@localhost:5432/hospital_claim_ai"
+      ],
       "description": "Hospital Claim AI PostgreSQL database — claims, audit logs, users"
     },
     "hosxp": {
       "command": "npx",
-      "args": ["-y", "@anthropic-ai/mcp-server-mysql", "mysql://user:pass@192.168.1.100:3306/hosxp_pcu"],
+      "args": [
+        "-y",
+        "@anthropic-ai/mcp-server-mysql",
+        "mysql://user:pass@192.168.1.100:3306/hosxp_pcu"
+      ],
       "description": "HOSxP HIS database — patient records, admissions, discharges",
       "disabled": true
+    },
+    "nhso-vault": {
+      "command": "python3",
+      "args": [
+        "${workspaceFolder}/knowledge/nhso-rag/mcp_server.py"
+      ],
+      "description": "สปสช Knowledge Vault — 184 concepts + 43 YouTube sources + 20 PDFs + FAISS RAG. Tools: search_wiki, get_wiki_page, list_concepts. Uses Ollama (nomic-embed-text + gemma4). Run `python3 knowledge/nhso-rag/build_faiss.py` first to build the index."
     }
   }
 }

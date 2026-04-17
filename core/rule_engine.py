@@ -24,7 +24,7 @@ ANGIO_CODES = {"88.55", "88.56", "88.57"}
 VENTILATOR_CODES = {"96.71", "96.72"}
 HD_CODES = {"39.95"}
 CAPD_CODES = {"54.98"}
-CHEMO_DX = {f"C{i:02d}" for i in range(98)}  # C00-C97
+CHEMO_DX = {f"C{i:02d}" for i in range(100)}  # C00-C99
 
 # MCC codes
 MCC_CODES = {
